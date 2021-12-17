@@ -37,6 +37,10 @@
 			cursor: not-allowed;
 		}
 
+		canvas {
+			width: 100%;
+		}
+
 	</style>
 </head>
 
@@ -54,6 +58,7 @@
 		</div>
 		<div id="info"> 等待 Dicom... </div>
 		<div id="size"></div>
+		<img id="diconImage" src="" alt=""></ㄛ>
 		<div> 
 			<input type="text" placeholder="檔名_長_寬_高_uint<位元>" id="file-name"> 
 		</div>
@@ -62,19 +67,28 @@
 				class="my-btn disabled"
 				id="download-button"
 				target="_blank"
-			> 下載 RAW 檔案</a>
+			> 下載 RAW 檔案(8bit)</a>
+			<a 
+				class="my-btn disabled"
+				id="download-button-16"
+				target="_blank"
+			> 下載 RAW 檔案(16bit)</a>
 		</div>
 		
 		
 	</div>
 
-	<script>
+	<script type="module">
+		import * as dicomjs from "https://cdn.skypack.dev/dicom.ts@1.0.3";
+
+		var dicom2Raw;
+
 		function convertRaw(){
 			/**
 			 * 使用 Dicom2Raw 這個 class 進行轉換
 			 * 需要 new 一個實例出來
 			*/
-			var dicom2Raw = new Dicom2Raw();
+			dicom2Raw = new Dicom2Raw();
 
 			/**
 			 * 選擇一個資料夾上傳
@@ -97,9 +111,10 @@
 					
 					var dimension = dicom2Raw.getDim();
 					document.getElementById('size').innerText = '尺寸: ' + dimension.x + ' x ' + dimension.y + ' x ' + dimension.z;
-					
-					dicom2Raw.concatnate(() => {
+
+					dicom2Raw.concatnate(async() => {
 						document.querySelector('#download-button').setAttribute('class', 'my-btn allow');
+						document.querySelector('#download-button-16').setAttribute('class', 'my-btn allow');
 						
 						document.querySelector('#info').innerHTML = "轉換完成";
 
@@ -111,6 +126,59 @@
 								dicom2Raw.rawData
 							);
 						});
+
+						document.querySelector('#download-button-16').addEventListener('click', ()=>{
+							let filename = document.querySelector('#file-name').value;
+
+							Dicom2Raw.downloadData(
+								filename + '.raw',
+								new Uint16Array(dicom2Raw.rawData)
+							);
+						});
+
+						// image顯示
+						const diconImage = document.getElementById("diconImage");
+
+						var imagePixel = dicom2Raw.getImagePixel(25);
+						console.log(imagePixel);
+
+						// var arrayBufferView = new Uint8Array( imagePixel );
+						var blob = new Blob( [ imagePixel ], { type: "image/jpeg" } );
+						var urlCreator = window.URL || window.webkitURL;
+						var imageUrl = urlCreator.createObjectURL( blob );
+						diconImage.src = imageUrl;
+
+						//canvas顯示圖片
+						// // create custom array view and fill with some random data
+						// var array = new Uint32Array(dimension.x*dimension.y);
+						// var imagePixelArray = new Uint32Array(imagePixel);
+						// // for(var i=0; i < array.length; i++) array[i] = 0xff000000|(Math.sin(i*0.0001)*0xffffff);
+						// for(var i=0; i < array.length; i++) array[i] = imagePixelArray[i];
+
+						// // create ImageData instance //array.buffer
+						// var iData = new ImageData(new Uint8ClampedArray(imagePixelArray), dimension.x, dimension.y);
+						// var ctx = c.getContext("2d");
+						// ctx.putImageData(iData, 0, 0);
+
+						//canvas顯示2
+						// try {
+						// 	// get the data into an ArrayBuffer
+						// 	const buffer = dicom2Raw.getImagePixel(25);
+						// 	// parse it
+						// 	const image = await dicomjs.parseImage(new DataView(buffer));
+						// 	console.log(image, buffer);
+							
+						// 	// render to canvas
+
+						// 	const canvas = document.getElementById("diconImage");
+
+						// 	const renderer = new dicomjs.Renderer(canvas);
+						// 	// decode, and display frame 0 on the canvas
+						// 	await renderer.render(image, 0);
+						// } 
+						// catch (e) {
+						// 	console.error(e);
+						// }
 					});
 				}
 			);
@@ -162,7 +230,7 @@
 				so.addChild("成功讀取範例程式所附的 DICOM 檔案", 6, true);
 				so.addChild("轉換 DICOM 序列為 RAW 檔案", 1, true);
 				so.addChild("成功下載轉換好的 RAW 檔案", 1, true);
-				so.addChild("可下載 8 bit 或 16 bit 的 RAW 檔案", 1, false);
+				so.addChild("可下載 8 bit 或 16 bit 的 RAW 檔案", 1, true);
 				so.addChild("在網頁中顯示中間的圖像", 1, false);
 				
 				so.renderModal(
